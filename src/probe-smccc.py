@@ -129,7 +129,7 @@ def main():
     # keymap to save all unique fingerprints and their associated list of funcIDs
     fp_to_ids = {}
 
-    for i in range(cpuids):
+    for i in range(len(smc_ranges)):
         odir = args.out_dir + "/" + str(i % cpuids) + "/" + "afl-edges-probe-out/"
 
         # go through all out directories holding the cov files
