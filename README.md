@@ -21,14 +21,10 @@ You will also need Python. We tested `version 3.10.12`.
 
 Download this repos and its submodules:
 ```bash
-git clone --recursive git@github.com:HexHive/EL3XIR.git
+git clone --recursive https://github.com/HexHive/EL3XIR.git
 cd EL3XIR
 
-# Troubleshooting: update the qemuafl submodule if not present yet
-cd src/aflvatarplusplus
-git submodule update --init -- qemu_mode/qemuafl
-
-# if other submodules are not present, act similar
+# Troubleshooting: ensure that all submodules are present
 ```
 
 ## Building with Docker
@@ -36,6 +32,7 @@ We recommend building EL3XIR using our Dockerfile at `docker\Dockerfile`.
 We provide a `Makefile` that helps to build EL3XIR and reproduce results.
 You can run `make build` to start the build process.
 This will build docker images `el3xir` (for rehosting and fuzzing) and `el3xir-synthesis` (for static harness synthesis).
+In case you cannot build the images, we also provide pre-built docker images on Docker hub at `https://hub.docker.com/r/chlindenmeier/el3xir_synthesis` and `https://hub.docker.com/r/chlindenmeier/el3xir`.
 
 If successful, you can execute `make run-fuzz-sh` or `make run-synth-sh` to run the corresponding container and spawn a shell.
 
@@ -57,10 +54,13 @@ We follow some conventions for locations.
 | `/src/svf` | Source code of our SVF fork including EL3XIR's smc-type-finder module for harness synthesis |
 
 ## Artifacts
-Please download artifact at: `https://zenodo.org/records/12250146`.
+For artifact evaluation, please download artifact at: `https://zenodo.org/records/12250146`.
+We note that artifacts are encrypted as they may include proprietary binaries and confidential data only intended to be used for the Usenix SEC'24 evaluators.
+Instead you may be required to collect artifacts yourself.
 Depending on the configuration, you will require multiple input artifacts that should all be place in `/in/$TARGET`, i.e., a new folder for every new target.
 For naming we encourage the convention `vendor-soc`.
 When running EL3XIR without interface awareness (noiface) and reflected peripheral modeling (mmio or nommio), we only require the target secure monitor binary at `/in/$TARGET/vendor-soc-bl31.bin`.
+You may find this binary by extracting it from a vendor update or directly from a physical device.
 When including EL3XIR's harness synthesis (iface), we also require the corresponding source code of the (Linux) kernel for the target SoC at `/in/$TARGET/kernel/`.
 Alternatively, you may use compiled LLVM-Bitcode of the target kernel. 
 We skip the compiling process if we find a file named `llvm_generate_preprocessed.sh` in the kernel folder.
@@ -71,6 +71,17 @@ The file `llvm-link.lst` must hold the name of each kernel object file in the fo
 After successfull compilation, you can use EL3XIR via the make targets defined in `Makefile`.
 Here, we provide a quick overview of the most interesting targets.
 For further documentation about parameters look into the Makefile.
+EL3XIR is designed to be extended with other secure monitor binaries.
+If trying to fuzz a new secure monitor with EL3XIR the following steps are required:
+* Implement rehosting environment: This includes a bootloader stub, secure world stub, normal world stup, and handling of hardware interactions.
+	You may look into `../secmonRehosting/rehostingEnvironments/` to find examples.
+	Section 4.1 of our paper explains a high-level systematic process for rehosting secure monitor binaries.
+    We note that our rehosting environments are directly dependent on the exact binary, i.e., if you use a new binary you need to adjust breakpoint locations.
+	
+* Optional harness synthesis: If you want to use EL3XIR's full potential you need the associated REE OS source code files (or already compiled as LLVM-Bitcode).
+	Then write a file \texttt{llvm-link.lst} that defines all kernel object files that may be interesting for exercising the secure monitor's interface.
+	Section 5.3 of our paper provides more details.
+	Finally, run `make run-synth-eval` to automatically synthesize the harness.
 
 ### Simple Test
 For running a simple single-core fuzzing campaign, place a targeted secure monitor binary at `/in/$TARGET/vendor-soc-bl31.bin`.
@@ -85,6 +96,7 @@ Furthermore, we require a definition of hand-picked kernel objectfiles in `llvm-
 Then execute `make run-synth-eval`.
 This will (1) compile the Linux kernel and link the partition, (2) perform static analysis for interface recovery, and (3) run the function identifier probing phase.
 Note that (1) and (3) may take multiple minutes.
+You may ignore warnings during kernel compilation.
 The following output files should be found when successful:
 
 | Path | Description |
