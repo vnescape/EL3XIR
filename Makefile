@@ -1,4 +1,4 @@
-                                                                                                                                             DOCKER := docker
+DOCKER := docker
 
 CPUID ?= 0
 TARGET ?= intel-n5x
